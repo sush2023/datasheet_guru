@@ -33,7 +33,7 @@ serve(async (req) => {
     const { models } = await modelsResponse.json();
     
     const generativeModel = models.find(
-      (m: any) => m.supportedGenerationMethods.includes("generateContent") && m.name.includes("gemini-1.0-pro")
+      (m: any) => m.supportedGenerationMethods.includes("generateContent") && m.name.includes("gemini-2.5-pro")
     );
 
     if (!generativeModel) {
