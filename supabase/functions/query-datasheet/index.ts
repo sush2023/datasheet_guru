@@ -1,0 +1,122 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.44.2";
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
+serve(async (req) => {
+  // Handle CORS preflight request
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: CORS_HEADERS });
+  }
+
+  try {
+    const { query } = await req.json();
+
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+    );
+
+    const googleApiKey = Deno.env.get("GOOGLE_API_KEY");
+    const embeddingUrl = `https://generativelanguage.googleapis.com/v1beta/models/embedding-001:embedContent?key=${googleApiKey}`;
+    
+    // 1. Dynamically find a suitable generative model
+    const modelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${googleApiKey}`;
+    const modelsResponse = await fetch(modelsUrl);
+    if (!modelsResponse.ok) {
+      throw new Error(`Failed to list models: ${await modelsResponse.text()}`);
+    }
+    const { models } = await modelsResponse.json();
+    
+    const generativeModel = models.find(
+      (m: any) => m.supportedGenerationMethods.includes("generateContent") && m.name.includes("gemini-1.0-pro")
+    );
+
+    if (!generativeModel) {
+      throw new Error("Could not find a suitable generative model.");
+    }
+    
+    const generativeUrl = `https://generativelanguage.googleapis.com/v1beta/${generativeModel.name}:generateContent?key=${googleApiKey}`;
+    console.log(`Using model: ${generativeModel.name}`);
+
+
+    // 2. Generate embedding for the user's query
+    const embedResponse = await fetch(embeddingUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "models/embedding-001", content: { parts: [{ text: query }] } }),
+    });
+
+    if (!embedResponse.ok) {
+      throw new Error(`Failed to embed query: ${await embedResponse.text()}`);
+    }
+    const { embedding: queryEmbeddingData } = await embedResponse.json();
+    const queryEmbedding = queryEmbeddingData.values;
+
+    // 3. Perform vector similarity search in Supabase
+    const { data: documents, error: matchError } = await supabaseClient.rpc(
+      "match_documents",
+      {
+        query_embedding: queryEmbedding,
+        match_threshold: 0.78,
+        match_count: 5,
+      },
+    );
+
+    if (matchError) {
+      throw matchError;
+    }
+
+    // 4. Construct prompt for the Generative LLM
+    const context = documents
+      .map((doc: { content: string }) => doc.content)
+      .join("\n\n");
+
+    const prompt = `
+      You are an expert in embedded systems datasheets.
+      Answer the following question based ONLY on the provided context.
+      If the answer is not found in the context, respond with "I cannot answer this question based on the provided datasheets."
+      
+      Context:
+      ${context}
+
+      Question:
+      ${query}
+
+      Answer:
+    `;
+
+    // 5. Generate answer using the dynamically found model
+    const generateResponse = await fetch(generativeUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+      }),
+    });
+
+    if (!generateResponse.ok) {
+      throw new Error(
+        `Failed to generate content: ${await generateResponse.text()}`,
+      );
+    }
+    const { candidates } = await generateResponse.json();
+    const aiResponse = candidates[0].content.parts[0].text;
+
+    // 6. Return the AI's answer
+    return new Response(JSON.stringify({ answer: aiResponse }), {
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      status: 200,
+    });
+  } catch (error) {
+    console.error("Error in RAG pipeline:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      status: 500,
+    });
+  }
+});
