@@ -71,10 +71,13 @@ serve(async (req) => {
       throw matchError;
     }
 
+
     // 4. Construct prompt for the Generative LLM
+    console.log("Retrieved docs:", Json.stringify(documents, null, 2));
     const context = documents
       .map((doc: { content: string }) => doc.content)
       .join("\n\n");
+    console.log("context: ", context);
 
     const prompt = `
       You are an expert in embedded systems datasheets.

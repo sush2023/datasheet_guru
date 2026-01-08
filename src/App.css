@@ -1,42 +1,229 @@
 #root {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 0 2rem; /* Adjusted padding for better vertical space usage */
   text-align: center;
+  width: 100%;
+  min-height: 100vh; /* Ensure root takes full viewport height */
+  display: flex;
+  flex-direction: column;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.App {
+  flex-grow: 1; /* Allow App to take available space */
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  min-height: 0; /* Allow content to shrink if needed */
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.App-header h1 {
+  font-size: 2.5em;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: 0;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+
+/* --- General Component Styles --- */
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.8em 1.5em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: var(--primary-color);
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.25s;
 }
 
-.card {
-  padding: 2em;
+button:hover {
+  filter: brightness(1.1);
+  border-color: #747bff;
 }
 
-.read-the-docs {
-  color: #888;
+button:disabled {
+  background-color: var(--accent-color);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: not-allowed;
+  border-color: transparent;
 }
+
+input[type="text"] {
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  padding: 0.8em 1.2em;
+  font-size: 1em;
+  font-family: inherit;
+  background-color: var(--surface-color);
+  color: var(--text-color);
+  transition: border-color 0.25s;
+  flex-grow: 1; /* Ensure text input fills available space */
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+
+/* --- File Upload Styles --- */
+
+.upload-details {
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  margin-top: 1rem; /* Space between header and details */
+}
+
+.upload-details summary {
+  padding: 1rem 1.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none; /* Remove default marker */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.upload-details summary::after {
+  content: "▶"; /* Custom arrow */
+  transform: rotate(90deg); /* Rotate for open state */
+  transition: transform 0.2s;
+  font-size: 0.8em;
+}
+
+.upload-details[open] summary::after {
+  transform: rotate(-90deg);
+}
+
+
+.file-upload-container {
+  padding: 1rem 2rem 2rem; /* Adjusted padding to remove top border */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  border-top: 1px solid var(--border-color); /* Add border at top of content */
+  margin-top: 1rem; /* Space from summary */
+}
+
+.file-upload-container h2 {
+  margin: 0;
+  font-size: 1.5em; /* Smaller heading for sub-section */
+}
+
+.custom-file-input {
+  border: 1px dashed var(--primary-color);
+  background-color: var(--accent-color);
+  color: var(--text-color);
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.custom-file-input:hover {
+  background-color: #3a3a3a;
+}
+
+.file-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+}
+
+.file-list li {
+  background-color: var(--accent-color);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  font-size: 0.9em;
+  text-align: center; /* Center list items */
+}
+
+
+/* --- Chat Interface Styles --- */
+
+.chat-container {
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
+  padding: 1rem;
+  border-radius: 12px;
+  flex-grow: 1; /* Allow chat-container to take remaining space */
+  display: flex;
+  flex-direction: column;
+  min-height: 400px; /* Ensure a minimum height for the chat */
+}
+
+.message-area {
+  flex-grow: 1;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  padding-right: 10px; /* For scrollbar spacing */
+}
+
+.message {
+  display: flex;
+  margin: 10px 0;
+}
+
+.message.user {
+  justify-content: flex-end;
+}
+
+.message.bot {
+  justify-content: flex-start;
+}
+
+.message-bubble {
+  padding: 10px 15px;
+  border-radius: 18px;
+  max-width: 75%;
+  line-height: 1.4;
+  text-align: left; /* Ensure text alignment within bubble */
+}
+
+.message.user .message-bubble {
+  background-color: var(--primary-color);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.message.bot .message-bubble {
+  background-color: var(--accent-color);
+  border: 1px solid var(--border-color);
+  border-bottom-left-radius: 4px;
+}
+
+.chat-input-area {
+  display: flex;
+  gap: 10px;
+}
+
+/* Scrollbar styling for Webkit browsers */
+.message-area::-webkit-scrollbar {
+  width: 8px;
+}
+
+.message-area::-webkit-scrollbar-track {
+  background: var(--surface-color);
+  border-radius: 10px;
+}
+
+.message-area::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 10px;
+}
+
+.message-area::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+

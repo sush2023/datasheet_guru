@@ -8,10 +8,11 @@ function App() {
       <header className="App-header">
         <h1>Datasheet Guru</h1>
       </header>
-      <main>
+      <details className="upload-details">
+        <summary>Upload New Datasheet</summary>
         <FileUpload />
-        <ChatInterface /> {/* Uncommented */}
-      </main>
+      </details>
+      <ChatInterface />
     </div>
   )
 }
