@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '../supabaseClient';
 
 interface ChatMessage {
   id: number;
@@ -19,42 +18,52 @@ const ChatInterface: React.FC = () => {
   }, [messages]);
 
   const handleSendMessage = async () => {
+    // just return if input is empty
     if (inputMessage.trim() === '') return;
 
     const newUserMessage: ChatMessage = {
-      id: messages.length + 1,
+      id: Date.now(),
       text: inputMessage,
       sender: 'user',
     };
+
+    // update the messages component's ChatMessage array
     setMessages((prevMessages) => [...prevMessages, newUserMessage]);
-    const currentInput = inputMessage;
+
+    // clear input field
     setInputMessage('');
     setLoading(true);
 
+    // Rag pipeline call
     try {
-      const { data, error } = await supabase.functions.invoke("query-datasheet", {
-        body: { query: currentInput },
+      const response = await fetch('/api/query-datasheet', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: inputMessage })
       });
-
-      if (error) {
-        throw new Error(`Function invocation failed: ${error.message}`);
+      if (!response.ok) {
+        throw new Error('Failed to get answer from da guru.');
       }
+      const data = await response.json();
 
+      // bot's message
       const botResponse: ChatMessage = {
-        id: messages.length + 2,
-        text: data.answer || "Sorry, I couldn't get a response.",
+        id: Date.now() + 1,
+        text: data.answer,
         sender: 'bot',
-      };
-      setMessages((prevMessages) => [...prevMessages, botResponse]);
-
+      }
+      setMessages((prevMessages) => [...prevMessages, botResponse])
     } catch (error) {
-      console.error(error);
-      const errorResponse: ChatMessage = {
-        id: messages.length + 2,
-        text: "Sorry, something went wrong. Please check the function logs.",
+      console.error("Chat Error, ", error);
+      const errorMessage: ChatMessage = {
+        id: Date.now() + 1,
+        text: `Sorry I can't seem to generate a proper answer with proper boonk gang knowledge right now: error: ${error}`,
         sender: 'bot',
-      };
-      setMessages((prevMessages) => [...prevMessages, errorResponse]);
+      }
+      setMessages((prevMessages) => [...prevMessages, errorMessage]);
+
     } finally {
       setLoading(false);
     }
