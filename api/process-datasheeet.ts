@@ -1,7 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import * as pdf from 'pdf-parse';
-import { create } from 'domain';
 
 function chunkText(text: string, chunksize: number = 500, overlap: number = 50): string[] {
   const chunks: string[] = [];
@@ -81,6 +80,11 @@ export default async function(req: VercelRequest, res: VercelResponse) {
     console.error("File path not found in webhook payload");
     return res.status(400).json({ error: 'Missing filepath in webhook payload' });
   }
+  const userID = record?.owner;
+  if (!userID) {
+    console.error("Owner field is null");
+    return res.status(400).json({ error: 'Missing owner field in webhook payload' })
+  }
 
   try {
     // supabase client init
@@ -135,6 +139,7 @@ export default async function(req: VercelRequest, res: VercelResponse) {
       content: chunk,
       embedding: embeddings[index],
       metadata: { fileName: filePath },
+      user: userID,
     }));
     // insert data into database
     const { error: insertError } = await supabaseClient.from("documents").insert(documentsToInsert);
