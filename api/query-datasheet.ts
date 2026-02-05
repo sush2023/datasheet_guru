@@ -19,9 +19,18 @@ export default async function(req: VercelRequest, res: VercelResponse) {
   try {
     const { query } = req.body; // Get the user's question from the request body
 
+    // auth jwt
+    const authHeader = req.headers["authorization"];
     const supabaseClient = createClient(
       process.env.SUPABASE_URL as string,
       process.env.SUPABASE_ANON_KEY as string,
+      {
+        global: {
+          headers: {
+            Authorization: authHeader as string
+          }
+        }
+      }
     );
 
     const googleApiKey = process.env.GOOGLE_API_KEY;
@@ -50,7 +59,7 @@ export default async function(req: VercelRequest, res: VercelResponse) {
       "match_documents",
       {
         query_embedding: queryEmbedding,
-        match_threshold: 0.78, // Adjust as needed
+        match_threshold: 5, // Adjust as needed
         match_count: 5,
       },
     );
@@ -67,8 +76,9 @@ export default async function(req: VercelRequest, res: VercelResponse) {
     const prompt = `
       You are an expert in embedded systems datasheets.
       Answer the following question based ONLY on the provided context.
-      If the answer is not found in the context, respond with "I cannot answer this question based on the provided datasheets."
-      
+      Answer the question based on the provided context. If the exact answer isn't explicitly stated, use your
+         general knowledge to fill in gaps, but prioritize the datasheets.
+      However, Make sure to question yourself and evaluate the response to the provided context before the final output is given to the user 
       Context:
       ${context}
 

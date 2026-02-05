@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { supabase } from '../supabaseClient';
 
 interface ChatMessage {
   id: number;
@@ -36,10 +37,12 @@ const ChatInterface: React.FC = () => {
 
     // Rag pipeline call
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch('/api/query-datasheet', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({ query: inputMessage })
       });
