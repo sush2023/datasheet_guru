@@ -59,7 +59,7 @@ export default async function(req: VercelRequest, res: VercelResponse) {
       "match_documents",
       {
         query_embedding: queryEmbedding,
-        match_threshold: 5, // Adjust as needed
+        match_threshold: 0.5, // Adjust as needed
         match_count: 5,
       },
     );
