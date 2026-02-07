@@ -9,13 +9,10 @@
     "lint": "eslint .",
     "preview": "vite preview"
   },
-  "overrides": {
-    "pdfjs-dist": "3.11.174"
-  },
   "dependencies": {
     "@supabase/supabase-js": "^2.88.0",
     "dotenv": "^17.2.3",
-    "pdf-parse": "^2.4.5",
+    "pdf-parse-fork": "^1.2.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
