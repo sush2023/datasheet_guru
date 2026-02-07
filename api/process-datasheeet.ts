@@ -1,12 +1,11 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import * as pdf from 'pdf-parse';
+import pdf from 'pdf-parse-fork';
 
 function chunkText(text: string, chunksize: number = 500, overlap: number = 50): string[] {
   const chunks: string[] = [];
   if (!text) return chunks;
   const sentences = text.split(/(?<=[.?!])\s+/); // Split by sentence endings
-
   let currentChunk = '';
   for (const sentence of sentences) {
     if ((currentChunk + sentence).length <= chunksize) {
@@ -103,24 +102,31 @@ export default async function(req: VercelRequest, res: VercelResponse) {
     if (!googleApiKey) {
       return res.status(400).json({ error: "GOOGLE_API_KEY is empty" });
     }
-    const embeddingUrl = `https://generativelanguage.googleapis.com/v1beta/models/embedding-001:embedContent?key=${googleApiKey}`;
+    const embeddingUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${googleApiKey}`;
 
     // grab text from pdf and make chunks of the text
     const buffer = Buffer.from(await fileData.arrayBuffer());
-    const pdfData = await (pdf as any).default(buffer);
-    const text = pdfData.text
+
+    // Robust parser call for pdf-parse-fork
+    let parser = pdf;
+    if ((pdf as any).default) {
+      parser = (pdf as any).default;
+    }
+    const data = await parser(buffer);
+    const text = data.text;
+
     if (!text) {
       return res.status(400).json({ error: "pdf has no text" });
     }
     const textChunks = chunkText(text);
     // generate embeddings
-    const embeddings = Promise.all(
+    const embeddings = await Promise.all(
       textChunks.map(async (chunk) => {
         const response = await fetch(embeddingUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "models/embedding-001",
+            model: "models/gemini-embedding-001",
             content: { parts: [{ text: chunk }] }
           }),
         });
@@ -139,7 +145,7 @@ export default async function(req: VercelRequest, res: VercelResponse) {
       content: chunk,
       embedding: embeddings[index],
       metadata: { fileName: filePath },
-      user: userID,
+      user_id: userID,
     }));
     // insert data into database
     const { error: insertError } = await supabaseClient.from("documents").insert(documentsToInsert);
