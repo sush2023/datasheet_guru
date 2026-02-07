@@ -37,14 +37,14 @@ export default async function(req: VercelRequest, res: VercelResponse) {
     if (!googleApiKey) {
       throw new Error('GOOGLE_API_KEY is not set.');
     }
-    const embeddingUrl = `https://generativelanguage.googleapis.com/v1beta/models/embedding-001:embedContent?key=${googleApiKey}`;
+    const embeddingUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${googleApiKey}`;
     const generativeUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-latest:generateContent?key=${googleApiKey}`;
 
     // 1. Generate embedding for the user's query
     const embedResponse = await fetch(embeddingUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "models/embedding-001", content: { parts: [{ text: query }] } }),
+      body: JSON.stringify({ model: "models/gemini-embedding-001", content: { parts: [{ text: query }] } }),
     });
 
     if (!embedResponse.ok) {
