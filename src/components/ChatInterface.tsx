@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { supabase } from '../supabaseClient';
 
 interface ChatMessage {
@@ -78,7 +80,9 @@ const ChatInterface: React.FC = () => {
         {messages.map((message) => (
           <div key={message.id} className={`message ${message.sender}`}>
             <div className="message-bubble">
-              {message.text}
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {message.text}
+              </ReactMarkdown>
             </div>
           </div>
         ))}
