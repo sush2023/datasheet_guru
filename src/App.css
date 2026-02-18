@@ -1,269 +1,344 @@
 #root {
-  max-width: 1280px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 0 2rem; /* Adjusted padding for better vertical space usage */
-  text-align: center;
+  padding: 0;
   width: 100%;
-  min-height: 100vh; /* Ensure root takes full viewport height */
+  height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
 .App {
-  flex-grow: 1; /* Allow App to take available space */
   display: flex;
   flex-direction: column;
-  gap: 1rem;
   width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  min-height: 0; /* Allow content to shrink if needed */
+  height: 100%;
+  overflow: hidden;
 }
 
+/* --- Header --- */
+.App-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  background-color: var(--bg-panel);
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: var(--shadow-md);
+  z-index: 10;
+}
+
+.App-header h1 {
+  font-size: 1.5rem;
+  margin: 0;
+  color: var(--primary);
+  text-shadow: 0 0 5px rgba(6, 182, 212, 0.4);
+}
+
+.App-header button {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.App-header button:hover {
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  border-color: var(--primary);
+}
+
+/* --- Main Layout --- */
 main {
   display: flex;
-  gap: 2rem;
-  flex-grow: 1;
-  min-height: 0;
-  text-align: left;
+  flex: 1;
+  overflow: hidden; /* Prevent main scrollbar */
 }
 
+/* --- Sidebar (Document Management) --- */
 .sidebar {
-  flex: 0 0 300px;
+  width: 320px;
+  min-width: 300px;
+  background-color: var(--bg-panel);
+  border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  padding: 1.5rem;
+  overflow-y: auto;
+  gap: 1.5rem;
 }
 
+.sidebar hr {
+  border: 0;
+  border-top: 1px solid var(--border-color);
+  width: 100%;
+  margin: 0;
+}
+
+/* --- Content Area (Chat Interface) --- */
 .content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 0;
-}
-
-.document-selector {
-  background-color: var(--surface-color);
-  border: 1px solid var(--border-color);
-  padding: 1rem;
-  border-radius: 12px;
-}
-
-.document-selector h3 {
-  margin-top: 0;
-  margin-bottom: 1rem;
-  font-size: 1.2rem;
-}
-
-.document-selector ul {
-  max-height: 300px;
+  padding: 1.5rem 2rem;
+  background-color: var(--bg-app);
   overflow-y: auto;
 }
 
-.App-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 0;
-}
 
+/* --- Shared Component Styles --- */
 
-/* --- General Component Styles --- */
-
+/* Buttons */
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.8em 1.5em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: var(--primary-color);
-  color: #ffffff;
+  background-color: var(--primary);
+  color: var(--bg-input);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1.5rem;
+  font-family: var(--font-mono);
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.25s;
+  transition: all 0.2s ease-in-out;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.875rem;
 }
 
-button:hover {
-  filter: brightness(1.1);
-  border-color: #747bff;
+button:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+  box-shadow: var(--shadow-glow);
+  transform: translateY(-1px);
 }
 
 button:disabled {
-  background-color: var(--accent-color);
-  color: rgba(255, 255, 255, 0.5);
+  background-color: var(--border-color);
+  color: var(--text-secondary);
   cursor: not-allowed;
-  border-color: transparent;
+  opacity: 0.6;
 }
 
-input[type="text"] {
-  border-radius: 8px;
+/* Inputs */
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+  background-color: var(--bg-input);
   border: 1px solid var(--border-color);
-  padding: 0.8em 1.2em;
-  font-size: 1em;
-  font-family: inherit;
-  background-color: var(--surface-color);
-  color: var(--text-color);
-  transition: border-color 0.25s;
-  flex-grow: 1; /* Ensure text input fills available space */
+  color: var(--text-primary);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+  box-sizing: border-box; /* Crucial for inputs */
 }
 
-input[type="text"]:focus {
+input:focus {
   outline: none;
-  border-color: var(--primary-color);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-dim);
 }
 
 
 /* --- File Upload Styles --- */
-
 .upload-details {
-  background-color: var(--surface-color);
+  background-color: var(--bg-input);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
-  margin-top: 1rem; /* Space between header and details */
+  border-radius: var(--radius-md);
+  overflow: hidden;
 }
 
 .upload-details summary {
-  padding: 1rem 1.5rem;
-  font-weight: 600;
+  padding: 0.75rem 1rem;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--text-code);
   cursor: pointer;
-  list-style: none; /* Remove default marker */
+  list-style: none;
   display: flex;
-  align-items: center;
   justify-content: space-between;
-}
-
-.upload-details summary::after {
-  content: "▶"; /* Custom arrow */
-  transform: rotate(90deg); /* Rotate for open state */
-  transition: transform 0.2s;
-  font-size: 0.8em;
-}
-
-.upload-details[open] summary::after {
-  transform: rotate(-90deg);
-}
-
-
-.file-upload-container {
-  padding: 1rem 2rem 2rem; /* Adjusted padding to remove top border */
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  border-top: 1px solid var(--border-color); /* Add border at top of content */
-  margin-top: 1rem; /* Space from summary */
-}
-
-.file-upload-container h2 {
-  margin: 0;
-  font-size: 1.5em; /* Smaller heading for sub-section */
-}
-
-.custom-file-input {
-  border: 1px dashed var(--primary-color);
-  background-color: var(--accent-color);
-  color: var(--text-color);
-  padding: 1rem 2rem;
-  border-radius: 8px;
-  cursor: pointer;
+  background-color: rgba(255, 255, 255, 0.02);
   transition: background-color 0.2s;
 }
 
-.custom-file-input:hover {
-  background-color: #3a3a3a;
+.upload-details summary:hover {
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
-.file-list ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  text-align: left;
+.upload-details summary::after {
+  content: "+";
+  font-weight: bold;
+  font-size: 1.2rem;
+  line-height: 1;
 }
 
-.file-list li {
-  background-color: var(--accent-color);
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
+.upload-details[open] summary::after {
+  content: "-";
+}
+
+.upload-content {
+  padding: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+/* --- Document List Styles --- */
+.document-selector h3 {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin-top: 0;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.document-selector ul li {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
   margin-bottom: 0.5rem;
-  font-size: 0.9em;
-  text-align: center; /* Center list items */
+  display: flex;
+  align-items: center;
+  transition: border-color 0.2s;
+}
+
+.document-selector ul li:hover {
+  border-color: var(--text-secondary);
+}
+
+.document-selector label {
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  word-break: break-all;
+}
+
+/* Custom Checkbox */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--text-secondary);
+  border-radius: 2px;
+  margin-right: 10px;
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+  background-color: var(--bg-input);
+}
+
+input[type="checkbox"]::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  transform: scale(0);
+  transition: 120ms transform ease-in-out;
+  box-shadow: inset 1em 1em var(--primary);
+  transform-origin: center;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+
+input[type="checkbox"]:checked {
+  border-color: var(--primary);
 }
 
 
 /* --- Chat Interface Styles --- */
-
 .chat-container {
-  background-color: var(--surface-color);
-  border: 1px solid var(--border-color);
-  padding: 1rem;
-  border-radius: 12px;
-  flex-grow: 1; /* Allow chat-container to take remaining space */
   display: flex;
   flex-direction: column;
-  min-height: 400px; /* Ensure a minimum height for the chat */
+  height: 100%;
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden; /* Keeps children contained */
 }
 
 .message-area {
-  flex-grow: 1;
+  flex: 1;
   overflow-y: auto;
-  margin-bottom: 1rem;
-  padding-right: 10px; /* For scrollbar spacing */
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .message {
   display: flex;
-  margin: 10px 0;
+  max-width: 80%;
 }
 
 .message.user {
-  justify-content: flex-end;
+  align-self: flex-end;
 }
 
 .message.bot {
-  justify-content: flex-start;
+  align-self: flex-start;
 }
 
 .message-bubble {
-  padding: 10px 15px;
-  border-radius: 18px;
-  max-width: 75%;
-  line-height: 1.4;
-  text-align: left; /* Ensure text alignment within bubble */
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  position: relative;
 }
 
 .message.user .message-bubble {
-  background-color: var(--primary-color);
-  color: #fff;
-  border-bottom-right-radius: 4px;
+  background-color: var(--primary);
+  color: var(--bg-input);
+  border-bottom-right-radius: 2px;
+  box-shadow: 0 2px 5px rgba(6, 182, 212, 0.2);
 }
 
 .message.bot .message-bubble {
-  background-color: var(--accent-color);
+  background-color: var(--bg-input);
   border: 1px solid var(--border-color);
-  border-bottom-left-radius: 4px;
+  color: var(--text-primary);
+  border-bottom-left-radius: 2px;
 }
 
+/* Markdown Styles inside Bubbles */
+.message-bubble code {
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.message-bubble pre {
+  background-color: rgba(0, 0, 0, 0.3);
+  padding: 1em;
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Chat Input Area */
 .chat-input-area {
+  padding: 1rem;
+  background-color: var(--bg-panel);
+  border-top: 1px solid var(--border-color);
   display: flex;
-  gap: 10px;
+  gap: 0.75rem;
 }
 
-/* Scrollbar styling for Webkit browsers */
-.message-area::-webkit-scrollbar {
-  width: 8px;
+.chat-input-area input {
+  flex: 1;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
 }
 
-.message-area::-webkit-scrollbar-track {
-  background: var(--surface-color);
-  border-radius: 10px;
+.chat-input-area button {
+  padding: 0 1.5rem; /* Less vertical padding, rely on flex stretch */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-
-.message-area::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 10px;
-}
-
-.message-area::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
-

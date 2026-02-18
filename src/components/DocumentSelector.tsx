@@ -46,7 +46,7 @@ const DocumentSelector: React.FC<DocumentSelectorProps> = ({ selectedFiles, onSe
   };
 
   const handleDeleteFile = async (fileName: string) => {
-    if (!window.confirm(`Are you sure you want to delete ${fileName.replace('public/', '')}?`)) {
+    if (!window.confirm(`CONFIRM DELETION: ${fileName.replace('public/', '')}?`)) {
       return;
     }
 
@@ -61,7 +61,6 @@ const DocumentSelector: React.FC<DocumentSelectorProps> = ({ selectedFiles, onSe
       }
 
       // 2. Delete from Database (documents table)
-      // metadata is a JSONB column, we filter by the fileName key inside it
       const { error: dbError } = await supabase
         .from('documents')
         .delete()
@@ -75,7 +74,6 @@ const DocumentSelector: React.FC<DocumentSelectorProps> = ({ selectedFiles, onSe
       setFiles((prev) => prev.filter((f) => f !== fileName));
       
       // 4. Update Parent State (selection)
-      // If the deleted file was currently selected, we need to unselect it
       if (selectedFiles.includes(fileName)) {
         const newSelection = selectedFiles.filter((f) => f !== fileName);
         onSelectionChange(newSelection);
@@ -83,50 +81,111 @@ const DocumentSelector: React.FC<DocumentSelectorProps> = ({ selectedFiles, onSe
 
     } catch (error: any) {
       console.error('Error deleting file:', error);
-      alert(`Failed to delete file: ${error.message}`);
+      alert(`System Error: ${error.message}`);
     }
   };
 
-  if (loading) return <div>Loading documents...</div>;
+  if (loading) return <div style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>Scanning storage...</div>;
 
   return (
     <div className="document-selector">
-      <h3>Select Datasheets to Query</h3>
+      <h3 style={{ 
+        fontSize: '0.8rem', 
+        color: 'var(--text-secondary)', 
+        textTransform: 'uppercase', 
+        letterSpacing: '0.1em',
+        borderBottom: '1px solid var(--border-color)',
+        paddingBottom: '0.5rem',
+        marginBottom: '1rem'
+      }}>
+        Active Datasheets
+      </h3>
+      
       {files.length === 0 ? (
-        <p>No documents found. Upload some first!</p>
+        <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic', fontSize: '0.9rem' }}>
+          No datasheets found. Initiate upload sequence.
+        </p>
       ) : (
-        <ul style={{ listStyle: 'none', padding: 0 }}>
-          {files.map((file) => (
-            <li key={file} style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-                <input
-                  type="checkbox"
-                  checked={selectedFiles.includes(file)}
-                  onChange={() => handleToggleFile(file)}
-                  style={{ marginRight: '10px' }}
-                />
-                {file.replace('public/', '')}
-              </label>
-              <button
-                onClick={() => handleDeleteFile(file)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: '#ff4d4d',
-                  fontSize: '16px',
-                  padding: '0 5px',
-                }}
-                title="Delete file"
-              >
-                🗑️
-              </button>
-            </li>
-          ))}
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          {files.map((file) => {
+            const isSelected = selectedFiles.includes(file);
+            return (
+              <li key={file} style={{ 
+                marginBottom: '8px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '0.85rem',
+                backgroundColor: isSelected ? 'rgba(6, 182, 212, 0.1)' : 'transparent',
+                border: isSelected ? '1px solid var(--primary-dim)' : '1px solid transparent',
+                borderRadius: 'var(--radius-sm)',
+                padding: '4px 8px',
+                transition: 'all 0.2s'
+              }}>
+                <label style={{ 
+                  cursor: 'pointer', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  flexGrow: 1,
+                  color: isSelected ? 'var(--primary)' : 'var(--text-primary)',
+                  fontWeight: isSelected ? 600 : 400
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => handleToggleFile(file)}
+                    style={{ marginRight: '10px' }}
+                  />
+                  {file.replace('public/', '')}
+                </label>
+                <button
+                  onClick={() => handleDeleteFile(file)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--accent-error)',
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    padding: '2px 6px',
+                    marginLeft: '8px',
+                    opacity: 0.8,
+                    transition: 'all 0.2s',
+                    fontFamily: 'var(--font-mono)',
+                    letterSpacing: '0.5px'
+                  }}
+                  title="Delete file"
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.opacity = '1';
+                    e.currentTarget.style.textDecoration = 'underline';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.opacity = '0.8';
+                    e.currentTarget.style.textDecoration = 'none';
+                  }}
+                >
+                  [DELETE]
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
-      <button onClick={fetchFiles} style={{ marginTop: '10px', fontSize: '12px' }}>
-        Refresh List
+      <button 
+        onClick={fetchFiles} 
+        style={{ 
+          marginTop: '15px', 
+          fontSize: '0.7rem', 
+          width: '100%', 
+          padding: '0.5rem',
+          backgroundColor: 'transparent', 
+          border: '1px dashed var(--border-color)',
+          color: 'var(--text-secondary)',
+          textTransform: 'uppercase'
+        }}
+      >
+        REFRESH_INDEX
       </button>
     </div>
   );
