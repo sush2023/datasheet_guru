@@ -17,7 +17,7 @@ export default async function(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { query } = req.body; // Get the user's question from the request body
+    const { query, selectedFiles } = req.body; // Get the user's question and selected files from the request body
 
     // auth jwt
     const authHeader = req.headers["authorization"];
@@ -61,6 +61,7 @@ export default async function(req: VercelRequest, res: VercelResponse) {
         query_embedding: queryEmbedding,
         match_threshold: 0.5, // Adjust as needed
         match_count: 5,
+        file_paths: selectedFiles,
       },
     );
 

@@ -9,7 +9,11 @@ interface ChatMessage {
   sender: 'user' | 'bot';
 }
 
-const ChatInterface: React.FC = () => {
+interface ChatInterfaceProps {
+  selectedFiles: string[];
+}
+
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFiles }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -46,7 +50,10 @@ const ChatInterface: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.access_token}`,
         },
-        body: JSON.stringify({ query: inputMessage })
+        body: JSON.stringify({ 
+          query: inputMessage,
+          selectedFiles: selectedFiles 
+        })
       });
       if (!response.ok) {
         throw new Error('Failed to get answer from da guru.');

@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 
-const FileUpload: React.FC = () => {
+interface FileUploadProps {
+  onUploadSuccess?: () => void;
+}
+
+const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState('');
@@ -39,6 +43,7 @@ const FileUpload: React.FC = () => {
     setMessage(`Successfully uploaded all ${selectedFiles.length} files!`);
     setSelectedFiles([]); // Clear the selection after successful upload
     setUploading(false);
+    if (onUploadSuccess) onUploadSuccess();
   };
 
   return (
