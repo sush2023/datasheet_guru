@@ -57,7 +57,11 @@ function App() {
             <FileUpload onUploadSuccess={() => setRefreshKey(prev => prev + 1)} />
           </details>
           <hr />
-          <DocumentSelector key={refreshKey} onSelectionChange={setSelectedFiles} />
+          <DocumentSelector 
+            key={refreshKey} 
+            selectedFiles={selectedFiles}
+            onSelectionChange={setSelectedFiles} 
+          />
         </div>
         <div className="content">
           <ChatInterface selectedFiles={selectedFiles} />
