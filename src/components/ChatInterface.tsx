@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { supabase } from '../supabaseClient';
 
 interface ChatMessage {
@@ -7,7 +9,11 @@ interface ChatMessage {
   sender: 'user' | 'bot';
 }
 
-const ChatInterface: React.FC = () => {
+interface ChatInterfaceProps {
+  selectedFiles: string[];
+}
+
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFiles }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -44,7 +50,10 @@ const ChatInterface: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.access_token}`,
         },
-        body: JSON.stringify({ query: inputMessage })
+        body: JSON.stringify({ 
+          query: inputMessage,
+          selectedFiles: selectedFiles 
+        })
       });
       if (!response.ok) {
         throw new Error('Failed to get answer from da guru.');
@@ -78,7 +87,9 @@ const ChatInterface: React.FC = () => {
         {messages.map((message) => (
           <div key={message.id} className={`message ${message.sender}`}>
             <div className="message-bubble">
-              {message.text}
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {message.text}
+              </ReactMarkdown>
             </div>
           </div>
         ))}

@@ -5,9 +5,12 @@ import './App.css'
 import FileUpload from './components/FileUpload'
 import ChatInterface from './components/ChatInterface'
 import Auth from './components/Auth'
+import DocumentSelector from './components/DocumentSelector'
 
 function App() {
   const [session, setSession] = useState<Session | null>(null)
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([])
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -48,11 +51,21 @@ function App() {
         </button>
       </header>
       <main>
-        <details className="upload-details">
-          <summary>Upload New Datasheet</summary>
-          <FileUpload />
-        </details>
-        <ChatInterface />
+        <div className="sidebar">
+          <details className="upload-details">
+            <summary>Upload New Datasheet</summary>
+            <FileUpload onUploadSuccess={() => setRefreshKey(prev => prev + 1)} />
+          </details>
+          <hr />
+          <DocumentSelector 
+            key={refreshKey} 
+            selectedFiles={selectedFiles}
+            onSelectionChange={setSelectedFiles} 
+          />
+        </div>
+        <div className="content">
+          <ChatInterface selectedFiles={selectedFiles} />
+        </div>
       </main>
     </div>
   )
