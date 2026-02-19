@@ -41,6 +41,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFiles }) => {
     setInputMessage('');
     setLoading(true);
 
+    // Create a placeholder message for the bot
+    const botMessageId = Date.now() + 1;
+    const botResponse: ChatMessage = {
+      id: botMessageId,
+      text: '', // Start empty
+      sender: 'bot',
+    };
+    setMessages((prevMessages) => [...prevMessages, botResponse]);
+
     // Rag pipeline call
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -55,27 +64,73 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFiles }) => {
           selectedFiles: selectedFiles 
         })
       });
+
       if (!response.ok) {
         throw new Error('Failed to get answer from da guru.');
       }
-      const data = await response.json();
 
-      // bot's message
-      const botResponse: ChatMessage = {
-        id: Date.now() + 1,
-        text: data.answer,
-        sender: 'bot',
+      if (!response.body) {
+        throw new Error('No response body');
       }
-      setMessages((prevMessages) => [...prevMessages, botResponse])
-    } catch (error) {
+
+      // Stream handling
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        buffer += chunk;
+        
+        // Process SSE messages
+        const lines = buffer.split('\n');
+        // Keep the last partial line in the buffer
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.trim() === '') continue;
+          
+          if (line.startsWith('data: ')) {
+            const jsonStr = line.slice(6); // Remove "data: " prefix
+            try {
+              const data = JSON.parse(jsonStr);
+              
+              // Check for error sent from backend
+              if (data.error) {
+                throw new Error(data.error);
+              }
+
+              // Extract text from Gemini response structure
+              const newText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (newText) {
+                setMessages((prevMessages) => 
+                  prevMessages.map(msg => 
+                    msg.id === botMessageId 
+                      ? { ...msg, text: msg.text + newText }
+                      : msg
+                  )
+                );
+              }
+            } catch (e) {
+              console.error('Error parsing SSE json', e);
+            }
+          }
+        }
+      }
+
+    } catch (error: any) {
       console.error("Chat Error, ", error);
-      const errorMessage: ChatMessage = {
-        id: Date.now() + 1,
-        text: `Sorry I can't seem to generate a proper answer with proper boonk gang knowledge right now: error: ${error}`,
-        sender: 'bot',
-      }
-      setMessages((prevMessages) => [...prevMessages, errorMessage]);
-
+      // Update the bot message to show the error
+      setMessages((prevMessages) => 
+        prevMessages.map(msg => 
+          msg.id === botMessageId
+            ? { ...msg, text: `Sorry, I encountered an error: ${error.message}` }
+            : msg
+        )
+      );
     } finally {
       setLoading(false);
     }
@@ -87,9 +142,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFiles }) => {
         {messages.map((message) => (
           <div key={message.id} className={`message ${message.sender}`}>
             <div className="message-bubble">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {message.text}
-              </ReactMarkdown>
+              {message.sender === 'bot' && loading && message.text === '' ? (
+                <div className="typing-indicator">
+                  <div className="typing-dot"></div>
+                  <div className="typing-dot"></div>
+                  <div className="typing-dot"></div>
+                </div>
+              ) : (
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {message.text}
+                </ReactMarkdown>
+              )}
             </div>
           </div>
         ))}
