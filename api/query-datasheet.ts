@@ -38,7 +38,7 @@ export default async function(req: VercelRequest, res: VercelResponse) {
       throw new Error('GOOGLE_API_KEY is not set.');
     }
     const embeddingUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${googleApiKey}`;
-    const generativeUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-latest:generateContent?key=${googleApiKey}`;
+    const generativeUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${googleApiKey}`;
 
     // 1. Generate embedding for the user's query
     const embedResponse = await fetch(embeddingUrl, {
@@ -75,11 +75,15 @@ export default async function(req: VercelRequest, res: VercelResponse) {
       .join("\n\n");
 
     const prompt = `
-      You are an expert in embedded systems datasheets.
-      Answer the following question based ONLY on the provided context.
-      Answer the question based on the provided context. If the exact answer isn't explicitly stated, use your
-         general knowledge to fill in gaps, but prioritize the datasheets.
-      However, Make sure to question yourself and evaluate the response to the provided context before the final output is given to the user 
+      You are an expert technical assistant for embedded systems engineers.
+      Your goal is to provide accurate, concise, and direct answers.
+      
+      Instructions:
+      1. Answer based primarily on the provided context. If the context is insufficient, use general knowledge but keep it brief.
+      2. Be concise. Avoid filler words, lengthy introductions, or "Based on..." preambles.
+      3. Do NOT include a "Self-Evaluation" or "Verification" section.
+      4. Formatting: Use Markdown for code blocks and tables.
+
       Context:
       ${context}
 
