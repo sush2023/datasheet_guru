@@ -15,6 +15,7 @@ interface ChatInterfaceProps {
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFiles }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [conversationSummary, setConversationSummary] = useState<string>('');
   const [inputMessage, setInputMessage] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const messageEndRef = useRef<HTMLDivElement>(null);
@@ -36,6 +37,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFiles }) => {
 
     // update the messages component's ChatMessage array
     setMessages((prevMessages) => [...prevMessages, newUserMessage]);
+
+    // Prepare history (last 6 messages for short-term context)
+    const chatHistory = messages.slice(-6).map(m => ({
+      role: m.sender === 'user' ? 'user' : 'model',
+      parts: [{ text: m.text }]
+    }));
 
     // clear input field
     setInputMessage('');
@@ -61,6 +68,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFiles }) => {
         },
         body: JSON.stringify({ 
           query: inputMessage,
+          history: chatHistory,
+          conversationSummary: conversationSummary,
           selectedFiles: selectedFiles 
         })
       });
@@ -101,6 +110,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedFiles }) => {
               // Check for error sent from backend
               if (data.error) {
                 throw new Error(data.error);
+              }
+
+              // Check for summary update sent from backend
+              if (data.summary) {
+                setConversationSummary(data.summary);
+                continue;
               }
 
               // Extract text from Gemini response structure
