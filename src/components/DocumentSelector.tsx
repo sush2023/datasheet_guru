@@ -61,7 +61,7 @@ const DocumentSelector: React.FC<DocumentSelectorProps> = ({ selectedFiles, onSe
           const fullName = `public/${f.name}`;
           return {
             name: fullName,
-            status: processedSet.has(fullName) ? 'ready' : 'processing' as const
+            status: (processedSet.has(fullName) ? 'ready' : 'processing') as 'ready' | 'processing'
           };
         });
 
