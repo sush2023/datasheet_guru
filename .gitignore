@@ -27,3 +27,6 @@ dist-ssr
 .env
 .supabase/secrets
 .vercel
+
+# Personal Documentation (Ignored by main repo)
+docs/personal/
