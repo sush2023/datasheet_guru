@@ -86,11 +86,14 @@ export default async function(req: VercelRequest, res: VercelResponse) {
       },
     );
 
-    if (matchError) {
-      throw matchError;
-    }
+        if (matchError) {
 
-    // 4. Construct prompt for the Generative LLM (UPDATED WITH MEMORY)
+          throw matchError;
+
+        }
+    
+
+        // 3. Construct prompt for the Generative LLM
     const context = documents
       .map((doc: { content: string }) => doc.content)
       .join("\n\n");

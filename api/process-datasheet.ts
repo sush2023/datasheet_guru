@@ -1,49 +1,102 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import pdf from 'pdf-parse-fork';
 
-function chunkText(text: string, chunksize: number = 500, overlap: number = 50): string[] {
-  const chunks: string[] = [];
-  if (!text) return chunks;
-  const sentences = text.split(/(?<=[.?!])\s+/); // Split by sentence endings
-  let currentChunk = '';
-  for (const sentence of sentences) {
-    if ((currentChunk + sentence).length <= chunksize) {
-      currentChunk += (currentChunk ? ' ' : '') + sentence;
-    } else {
-      if (currentChunk) {
-        chunks.push(currentChunk);
+// Helper to chunk markdown into Parents and Children
+// A Parent is a major section (defined by H1/H2).
+// Children are smaller chunks (paragraphs, lists, tables) within that Parent.
+interface ChildChunk {
+  content: string;
+}
+
+interface ParentChunk {
+  content: string;
+  children: ChildChunk[];
+}
+
+function chunkMarkdown(markdown: string, maxChildSize: number = 500, overlap: number = 50): ParentChunk[] {
+  const parents: ParentChunk[] = [];
+  
+  // 1. Split into major sections (Parents) using H1 or H2
+  const sectionRegex = /(^#\s+.+$|^##\s+.+$)/m;
+  const parts = markdown.split(sectionRegex);
+  
+  let currentHeader = '';
+  let currentBody = '';
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (sectionRegex.test(part)) {
+      // If we already have a body, save it as a parent chunk
+      if (currentBody.trim()) {
+        parents.push(processSection(currentHeader, currentBody, maxChildSize, overlap));
       }
-      currentChunk = sentence;
+      currentHeader = part;
+      currentBody = '';
+    } else {
+      currentBody += part;
     }
   }
-  if (currentChunk) {
-    chunks.push(currentChunk)
+  
+  // Add the last section
+  if (currentBody.trim() || currentHeader.trim()) {
+    parents.push(processSection(currentHeader, currentBody, maxChildSize, overlap));
   }
 
-  // Fallback if chunks not populated or any chunks larger than designated size
-  if (chunks.length == 0 || chunks.some(c => c.length > chunksize)) {
-    chunks.length = 0;
-    let i = 0;
-    while (i < text.length) {
-      const end = Math.min(i + chunksize, text.length);
-      let chunk = text.slice(i, end);
+  return parents;
+}
 
-      // attempt to end chunk at natural break
+function processSection(header: string, body: string, chunksize: number, overlap: number): ParentChunk {
+  const fullContent = (header + "\n" + body).trim();
+  const children: ChildChunk[] = [];
+  
+  // Simple child chunking: split by double newline (paragraphs/tables)
+  const paragraphs = body.split(/\n\s*\n/);
+  
+  let currentChild = '';
+  for (const p of paragraphs) {
+    if ((currentChild + "\n\n" + p).length <= chunksize) {
+      currentChild += (currentChild ? "\n\n" : "") + p;
+    } else {
+      if (currentChild) {
+        // Prepend header to give child context even on its own
+        children.push({ content: (header ? header.trim() + "\n" : "") + currentChild.trim() });
+      }
+      currentChild = sentenceCorrection(p);
+    }
+  }
+  if (currentChild) {
+    children.push({ content: (header ? header.trim() + "\n" : "") + currentChild.trim() });
+  }
+
+  // Fallback if chunks are empty or too big (e.g., massive tables without newlines)
+  if (children.length === 0 || children.some(c => c.content.length > chunksize * 1.5)) {
+    children.length = 0;
+    let i = 0;
+    while (i < body.length) {
+      const end = Math.min(i + chunksize, body.length);
+      let chunk = body.slice(i, end);
       const lastSpace = chunk.lastIndexOf(' ');
-      if (lastSpace > -1 && (end - (i + lastSpace) < overlap) && end < text.length) {
+      if (lastSpace > -1 && (end - (i + lastSpace) < overlap) && end < body.length) {
         chunk = chunk.substring(0, lastSpace);
       }
-      chunks.push(chunk.trim());
+      children.push({ content: (header ? header.trim() + "\n" : "") + chunk.trim() });
       i = end - overlap;
       if (i < 0) i = 0;
-      if (i > text.length) break;
+      if (i > body.length) break;
       i += Math.max(chunk.length - overlap, i);
     }
   }
-  return chunks;
+
+  return {
+    content: fullContent,
+    children: children
+  };
 }
 
+// Minimal helper to handle string assignment in loop
+function sentenceCorrection(p: string): string {
+  return p;
+}
 
 const setCorsHeaders = (res: VercelResponse) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -53,110 +106,119 @@ const setCorsHeaders = (res: VercelResponse) => {
 
 export default async function(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(res);
-  // CORS request can respond with 200 outright
   if (req.method === 'OPTIONS') {
     return res.status(200).send('ok');
   }
 
-  // Security Check by checking for env vars that have the necessary secrets
   const processSecret = process.env.PROCESS_DATASHEET_SECRET;
   const providedSecret = req.headers['x-process-secret'];
 
-  if (!processSecret) {
-    console.error('PROCESS_DATAHSHEET_SECRET not set/ defined');
-    return res.status(500).json({ error: 'Server secret not set' });
-  }
-
-  if (!providedSecret || providedSecret !== processSecret) {
-    console.error('Unauthorized attempt to call process-datasheet func');
+  if (!processSecret || providedSecret !== processSecret) {
+    console.error('Unauthorized attempt to call process-datasheet function.');
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  // parse incoming request to derive the filePath/ file that needs processed
   const { record } = req.body;
   const filePath = record?.name;
-  if (!filePath) {
-    console.error("File path not found in webhook payload");
-    return res.status(400).json({ error: 'Missing filepath in webhook payload' });
-  }
   const userID = record?.owner;
-  if (!userID) {
-    console.error("Owner field is null");
-    return res.status(400).json({ error: 'Missing owner field in webhook payload' })
+
+  if (!filePath || !userID) {
+    return res.status(400).json({ error: 'Missing filepath or owner in webhook payload.' });
   }
 
+  console.log(`Processing datasheet: ${filePath}`);
+
   try {
-    // supabase client init
     const supabaseClient = createClient(
       process.env.SUPABASE_URL as string,
       process.env.SUPABASE_SERVICE_ROLE_KEY as string
-    )
-    // download file from supabase datasheets storage
-    const { data: fileData, error: downloadError } = await supabaseClient.storage.from("datasheets").download(filePath);
-    if (downloadError) {
-      throw downloadError;
-    }
+    );
 
-    // gemini embeddings URL
+    const { data: fileData, error: downloadError } = await supabaseClient.storage.from("datasheets").download(filePath);
+    if (downloadError) throw downloadError;
+
     const googleApiKey = process.env.GOOGLE_API_KEY;
-    if (!googleApiKey) {
-      return res.status(400).json({ error: "GOOGLE_API_KEY is empty" });
-    }
+    if (!googleApiKey) throw new Error("GOOGLE_API_KEY is missing.");
+
+    const buffer = Buffer.from(await fileData.arrayBuffer());
+    const base64Pdf = buffer.toString('base64');
+
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${googleApiKey}`;
+    const geminiResponse = await fetch(geminiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: "Extract the contents of this PDF into structured Markdown. Preserve all headers, lists, and convert all data tables into perfectly formatted Markdown tables. Do not include any conversational filler." },
+            { inlineData: { mimeType: "application/pdf", data: base64Pdf } }
+          ]
+        }]
+      })
+    });
+
+    if (!geminiResponse.ok) throw new Error(`Gemini PDF parsing failed: ${await geminiResponse.text()}`);
+
+    const geminiJson = await geminiResponse.json();
+    const markdownText = geminiJson.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!markdownText) throw new Error("Gemini failed to extract text from PDF.");
+
+    const parentChunks = chunkMarkdown(markdownText);
     const embeddingUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${googleApiKey}`;
 
-    // grab text from pdf and make chunks of the text
-    const buffer = Buffer.from(await fileData.arrayBuffer());
+    let totalChildrenInserted = 0;
+    for (const parent of parentChunks) {
+      if (!parent.content.trim()) continue;
 
-    // Robust parser call for pdf-parse-fork
-    let parser = pdf;
-    if ((pdf as any).default) {
-      parser = (pdf as any).default;
+      const { data: parentData, error: parentError } = await supabaseClient
+        .from("documents")
+        .insert({
+          content: parent.content,
+          metadata: { fileName: filePath, type: 'parent' },
+          user_id: userID,
+        })
+        .select('id')
+        .single();
+
+      if (parentError) throw parentError;
+      const parentId = parentData.id;
+
+      const validChildren = parent.children.filter(c => c.content.trim());
+      if (validChildren.length === 0) continue;
+
+      const embeddings = await Promise.all(
+        validChildren.map(async (child) => {
+          const response = await fetch(embeddingUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "models/gemini-embedding-001",
+              content: { parts: [{ text: child.content }] }
+            }),
+          });
+          if (!response.ok) throw new Error(`Failed to get embedding: ${await response.text()}`);
+          const json = await response.json();
+          return json.embedding.values;
+        })
+      );
+
+      const childrenToInsert = validChildren.map((child, index) => ({
+        content: child.content,
+        embedding: embeddings[index],
+        metadata: { fileName: filePath, type: 'child' },
+        parent_id: parentId,
+        user_id: userID,
+      }));
+
+      const { error: childError } = await supabaseClient.from("documents").insert(childrenToInsert);
+      if (childError) throw childError;
+      totalChildrenInserted += childrenToInsert.length;
     }
-    const data = await parser(buffer);
-    const text = data.text;
 
-    if (!text) {
-      return res.status(400).json({ error: "pdf has no text" });
-    }
-    const textChunks = chunkText(text);
-    // generate embeddings
-    const embeddings = await Promise.all(
-      textChunks.map(async (chunk) => {
-        const response = await fetch(embeddingUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: "models/gemini-embedding-001",
-            content: { parts: [{ text: chunk }] }
-          }),
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Failed to get embedding: ${errorText}`);
-        }
-
-        const json = await response.json();
-        return json.embedding.values;
-      })
-    );
-    // prepare insertion data for database
-    const documentsToInsert = textChunks.map((chunk, index) => ({
-      content: chunk,
-      embedding: embeddings[index],
-      metadata: { fileName: filePath },
-      user_id: userID,
-    }));
-    // insert data into database
-    const { error: insertError } = await supabaseClient.from("documents").insert(documentsToInsert);
-    if (insertError) {
-      throw insertError;
-    }
-    return res.status(200).json({ message: `Successfully processed and embedded ${filePath}` });
-  }
-  catch (error: any) {
-    // error out/ return error
-    console.error("Error in process-datasheet pipeline:", error);
+    console.log(`Successfully processed ${filePath}. Parents: ${parentChunks.length}, Children: ${totalChildrenInserted}`);
+    return res.status(200).json({ message: "Processing complete." });
+  } catch (error: any) {
+    console.error(`Error processing datasheet ${filePath}:`, error.message);
     return res.status(500).json({ error: error.message });
   }
 }
