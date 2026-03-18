@@ -12,22 +12,10 @@ const DocumentSelector: React.FC<DocumentSelectorProps> = ({ selectedFiles, onSe
 
   useEffect(() => {
     fetchFiles();
-    
-    // Auto-refresh while any file is still processing
-    const interval = setInterval(() => {
-      setFiles((prev) => {
-        const anyProcessing = prev.some(f => f.status === 'processing');
-        if (anyProcessing) {
-          fetchFiles(false); // Silent refresh
-        }
-        return prev;
-      });
-    }, 5000);
-
-    return () => clearInterval(interval);
   }, []);
 
   const fetchFiles = async (showLoading = true) => {
+    console.log(`[DEBUG] fetchFiles called (showLoading=${showLoading})`);
     if (showLoading) setLoading(true);
     
     try {
@@ -43,7 +31,6 @@ const DocumentSelector: React.FC<DocumentSelectorProps> = ({ selectedFiles, onSe
       if (storageError) throw storageError;
 
       // 2. Fetch unique file names already in the documents table
-      // We use RPC or a simple select. Since we have the index, this is efficient.
       const { data: dbData, error: dbError } = await supabase
         .from('documents')
         .select('metadata')
@@ -53,18 +40,21 @@ const DocumentSelector: React.FC<DocumentSelectorProps> = ({ selectedFiles, onSe
 
       // Create a set of processed file names for fast lookup
       const processedSet = new Set(dbData.map(d => d.metadata.fileName));
+      console.log(`[DEBUG] Storage files count: ${storageData?.length}, DB processed files: ${processedSet.size}`);
 
       // 3. Combine and determine status
       const mappedFiles = (storageData || [])
         .filter((f) => f.name !== '.emptyFolderPlaceholder')
         .map((f) => {
           const fullName = `public/${f.name}`;
+          const isReady = processedSet.has(fullName);
           return {
             name: fullName,
-            status: (processedSet.has(fullName) ? 'ready' : 'processing') as 'ready' | 'processing'
+            status: (isReady ? 'ready' : 'processing') as 'ready' | 'processing'
           };
         });
 
+      console.log(`[DEBUG] Final mapped files:`, mappedFiles);
       setFiles(mappedFiles);
     } catch (error) {
       console.error('Error indexing files:', error);
