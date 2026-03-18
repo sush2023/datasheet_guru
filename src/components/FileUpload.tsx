@@ -26,24 +26,72 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
     }
 
     setUploading(true);
-    setMessage(`Uploading ${selectedFiles.length} file(s)...`);
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      setMessage('Authentication session not found.');
+      setUploading(false);
+      return;
+    }
 
     for (const file of selectedFiles) {
-      const { error } = await supabase.storage
+      console.log(`[DEBUG] Starting upload for: ${file.name}`);
+      setMessage(`Uploading ${file.name}...`);
+      
+      const { error: uploadError } = await supabase.storage
         .from('datasheets')
-        .upload(`public/${file.name}`, file);
+        .upload(`public/${file.name}`, file, {
+          upsert: true
+        });
 
-      if (error) {
-        setMessage(`Upload failed for ${file.name}: ${error.message}`);
+      if (uploadError) {
+        console.error(`[DEBUG] Storage upload failed:`, uploadError);
+        setMessage(`Upload failed for ${file.name}: ${uploadError.message}`);
         setUploading(false);
         return;
       }
+
+      console.log(`[DEBUG] Storage upload success: ${file.name}. Triggering API.`);
+      // Signal parent to refresh (will show as processing)
+      if (onUploadSuccess) onUploadSuccess();
+
+      setMessage(`Analyzing ${file.name}...`);
+      
+      try {
+        const response = await fetch('/api/process-datasheet', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            filePath: `public/${file.name}`
+          })
+        });
+
+        console.log(`[DEBUG] API Response Status: ${response.status}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[DEBUG] API Error:`, errorText);
+          throw new Error(errorText || 'Analysis failed');
+        }
+        
+        console.log(`[DEBUG] API Success for ${file.name}`);
+        setMessage(`Successfully processed ${file.name}.`);
+      } catch (err: any) {
+        console.error(`[DEBUG] Lifecycle error:`, err);
+        setMessage(`Analysis failed for ${file.name}: ${err.message}`);
+        setUploading(false);
+        return;
+      }
+
+      // Signal parent again (will show as ready)
+      if (onUploadSuccess) onUploadSuccess();
     }
 
-    setMessage(`Success! ${selectedFiles.length} file(s) uploaded.`);
+    setMessage(`All ${selectedFiles.length} file(s) processed successfully.`);
     setSelectedFiles([]);
     setUploading(false);
-    if (onUploadSuccess) onUploadSuccess();
   };
 
   const handleClear = () => {

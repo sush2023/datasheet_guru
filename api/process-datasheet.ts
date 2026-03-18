@@ -111,21 +111,51 @@ export default async function(req: VercelRequest, res: VercelResponse) {
 
   const processSecret = process.env.PROCESS_DATASHEET_SECRET;
   const providedSecret = req.headers['x-process-secret'];
+  const authHeader = req.headers['authorization'];
 
-  if (!processSecret || providedSecret !== processSecret) {
-    console.error('Unauthorized attempt to call process-datasheet function.');
+  let userID: string | undefined;
+  let filePath: string | undefined;
+
+  // 1. Authentication
+  if (processSecret && providedSecret === processSecret) {
+    console.log('[DEBUG] Authenticated via PROCESS_DATASHEET_SECRET');
+    const { record, filePath: directPath, userId: directUser } = req.body;
+    filePath = directPath || record?.name;
+    userID = directUser || record?.owner;
+  } else if (authHeader) {
+    console.log('[DEBUG] Authenticated via Authorization header (JWT)');
+    try {
+      const supabaseAuthClient = createClient(
+        process.env.SUPABASE_URL as string,
+        process.env.SUPABASE_ANON_KEY as string,
+        {
+          global: { headers: { Authorization: authHeader } }
+        }
+      );
+      const { data: { user }, error: authError } = await supabaseAuthClient.auth.getUser();
+      if (authError || !user) {
+        console.error('[DEBUG] JWT Auth failed:', authError?.message);
+        throw new Error('Invalid token');
+      }
+      userID = user.id;
+      const { filePath: bodyPath } = req.body;
+      filePath = bodyPath;
+      console.log(`[DEBUG] JWT Auth success. User: ${userID}, File: ${filePath}`);
+    } catch (e) {
+      console.error('[DEBUG] JWT Auth exception:', e);
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+  } else {
+    console.error('[DEBUG] No valid authentication provided.');
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const { record } = req.body;
-  const filePath = record?.name;
-  const userID = record?.owner;
-
   if (!filePath || !userID) {
-    return res.status(400).json({ error: 'Missing filepath or owner in webhook payload.' });
+    console.error(`[DEBUG] Missing params: filePath=${filePath}, userID=${userID}`);
+    return res.status(400).json({ error: 'Missing filepath or user information.' });
   }
 
-  console.log(`Processing datasheet: ${filePath}`);
+  console.log(`[DEBUG] Starting process for: ${filePath}`);
 
   try {
     const supabaseClient = createClient(
